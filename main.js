@@ -4,7 +4,7 @@ const API_URL = 'api/'; // La carpeta donde está nuestro cerebro PHP
 // Memoria para guardar quién es el usuario y qué libros hay
 let currentUser = null;
 let allBooks = [];
-
+//hola
 // Referencias a los contenedores de las páginas
 const pages = {
     auth: document.getElementById('auth-page'),
