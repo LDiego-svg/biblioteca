@@ -1,5 +1,5 @@
 // --- 1. MEMORIA DEL FRONTEND Y CONFIGURACIÓN ---
-const API_URL = 'api/'; // La carpeta donde está nuestro cerebro PHP
+const API_URL = 'api/'; 
 
 // Memoria para guardar quién es el usuario y qué libros hay
 let currentUser = null;
@@ -21,7 +21,7 @@ function showPage(pageName) {
     }
 }
 
-// --- 3. FUNCIONES DE "RENDERIZADO" (DIBUJAR EL HTML) ---
+// --- 3. FUNCIONES DE RENDERIZADO---
 
 // Dibuja la página de Login Y Registro
 function renderAuthPage() {
