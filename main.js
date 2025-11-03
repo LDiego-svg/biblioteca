@@ -164,7 +164,6 @@ function renderBooksGrid(books, borrowedIds) {
 
         return `
             <div class="card book-card" onclick="renderBookPreviewPage(${book.id})">
-                <div class="book-icon">📚</div>
                 <div class="book-card-info">
                     <div class="title-row">
                         <h3>${book.title}</h3>
@@ -203,7 +202,6 @@ async function renderBookPreviewPage(bookId) {
         <div class="book-preview-grid">
             <div class="book-preview-sidebar">
                 <div class="card">
-                    <div class="book-icon">📖</div>
                     <button 
                         class="btn ${!isBorrowed ? 'btn-primary' : ''}" 
                         style="width: 100%; margin-top: 1rem;" 
