@@ -9,21 +9,25 @@ if (empty($username) || empty($password)) {
     exit;
 }
 
-// Preparamos la consulta para encontrar al usuario
-$stmt = $conn->prepare("SELECT * FROM usuarios WHERE username = :username AND password = :password");
-$stmt->bindParam(':username', $username);
-$stmt->bindParam(':password', $password);
-$stmt->execute();
+// 1. Buscamos al usuario SÓLO por el username
+$stmt = $conn->prepare("SELECT * FROM usuarios WHERE username = :username");
+
+// 2. ¡AQUÍ ESTÁ LA LÍNEA QUE FALTABA!
+$stmt->bindParam(':username', $username); // Atamos la variable
+
+$stmt->execute(); 
 
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($user) {
-    // ¡Usuario encontrado! Lo devolvemos como JSON
-    // Ocultamos la contraseña por seguridad
+// 3. Verificamos si el usuario existe Y si la contraseña coincide
+if ($user && password_verify($password, $user['password'])) {
+    // ¡Contraseña correcta!
+    
+    // Ocultamos la contraseña por seguridad antes de enviarla
     unset($user['password']); 
     echo json_encode(['user' => $user]);
 } else {
-    // Usuario no encontrado
+    // Usuario no encontrado o contraseña incorrecta
     echo json_encode(['error' => 'Credenciales incorrectas.']);
 }
 ?>

@@ -4,6 +4,7 @@ const API_URL = 'api/';
 // Memoria para guardar quién es el usuario y qué libros hay
 let currentUser = null;
 let allBooks = [];
+let borrowCart = [];
 // Referencias a los contenedores de las páginas
 const pages = {
     auth: document.getElementById('auth-page'),
@@ -11,6 +12,7 @@ const pages = {
     admin: document.getElementById('admin-page'),
     bookPreview: document.getElementById('book-preview-page'),
     myBooks: document.getElementById('my-books-page'),
+    cart: document.getElementById('cart-page')
 };
 
 // --- 2. NAVEGACIÓN ENTRE PÁGINAS ---
@@ -58,6 +60,10 @@ function renderAuthPage() {
                 <div class="input-group">
                     <label for="reg-username">Usuario</label>
                     <input id="reg-username" type="text" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="reg-email">Email</label>
+                    <input id="reg-email" type="email" class="input" required />
                 </div>
                 <div class="input-group">
                     <label for="reg-password">Contraseña</label>
@@ -110,7 +116,10 @@ function renderAuthPage() {
 async function renderUserPage() {
     // 1. Pedir al PHP los libros que YA he prestado
     const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
-    const borrowedIds = myBorrowedBooks.map(b => b.id_libro);
+    
+    // 👇 MEJORA 1: Verificación defensiva 👇
+    // Si myBorrowedBooks es null (por un error de API), lo tratamos como un array vacío.
+    const borrowedIds = myBorrowedBooks ? myBorrowedBooks.map(b => b.id_libro) : [];
 
     pages.user.innerHTML = `
         <div class="header">
@@ -122,6 +131,7 @@ async function renderUserPage() {
             </div>
             <div class="header-actions">
                 <button id="my-books-btn" class="btn btn-outline">Mis Libros (${borrowedIds.length})</button>
+                <button id="cart-btn" class="btn btn-primary">Carrito (${borrowCart.length})</button>
                 <button id="logout-btn" class="btn btn-outline">Salir</button>
             </div>
         </div>
@@ -134,18 +144,27 @@ async function renderUserPage() {
     // 3. Obtenemos todos los libros del backend
     allBooks = await apiCall('libros.php');
 
+    if (!allBooks) {
+        console.error("No se pudieron cargar 'allBooks'. Deteniendo render.");
+        alert("Error: No se pudo conectar con la base de datos de libros. Revisa la consola.");
+        return; // Salimos de la función para evitar más errores
+    }
+
     // 4. Dibuja la cuadrícula de libros
     renderBooksGrid(allBooks, borrowedIds);
     
     // 5. Listeners
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('my-books-btn').addEventListener('click', renderMyBooksPage);
+    document.getElementById('cart-btn').addEventListener('click', renderCartPage);
 
     document.getElementById('search-input').addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
-        const filteredBooks = allBooks.filter(book => 
+        
+        const filteredBooks = allBooks ? allBooks.filter(book => 
             book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query)
-        );
+        ) : [];
+        
         renderBooksGrid(filteredBooks, borrowedIds);
     });
     showPage('user');
@@ -161,6 +180,33 @@ function renderBooksGrid(books, borrowedIds) {
     grid.innerHTML = books.map(book => {
         // Comprobamos si el libro ya está prestado (de la BD)
         const isBorrowed = borrowedIds.includes(book.id);
+        const isInCart = borrowCart.includes(book.id);
+        
+        let buttonHTML = ('');
+        if (isBorrowed){
+            buttonHTML = `<button
+            class="btn
+            style="width: 100%; margin-top: 1rem;"
+            disabled>
+            Prestado
+            </button>`;
+
+        } else if (isInCart){
+            buttonHTML = `<button
+            class="btn btn-outline"
+            style="width: 100%; margin-top: 1rem;
+            onclick="event-stopPropagation(); handleRemoveFromCart(${book.id})">
+            Quitar de la lista
+            </button>`;
+
+        } else {
+            buttonHTML = `button
+            class="btn btn-primary"
+            style="width: 100%; margin-top: 1rem;
+            onclick="event.stopPropagation(); handleAddToCart(${book.id})">
+            Añadir a la lista
+            </button>`;
+        }
 
         return `
             <div class="card book-card" onclick="renderBookPreviewPage(${book.id})">
@@ -190,26 +236,27 @@ async function renderBookPreviewPage(bookId) {
 
     // Obtenemos préstamos
     const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
-    const isBorrowed = myBorrowedBooks.some(b => b.id_libro == book.id);
+    const isBorrowed = myBorrowedBooks ? myBorrowedBooks.some(b=> b.id_libro == book.id) : false;
+    const isInCart = borrowCart.includes(book.id);
 
-    let buttonText = 'Pedir Prestado';
+    let buttonHTML = '';
     if (isBorrowed) {
-        buttonText = 'Ya Prestado';
+        buttonHTML = `<button class="btn" style="width: 100%; margin-top: 1rem;" disabled>Prestado</button>`;
+    } else if (isInCart) {
+        buttonHTML = `<button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="handleRemoveFromCart(${book.id})">Quitar de la Lista</button>`;
+    } else {
+        buttonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="handleAddToCart(${book.id})">Añadir a la Lista</button>`;
     }
     
     pages.bookPreview.innerHTML = `
         <button id="back-to-list-btn" class="btn btn-outline" style="margin-bottom: 1.5rem;">← Volver a la lista</button>
+        
         <div class="book-preview-grid">
             <div class="book-preview-sidebar">
                 <div class="card">
-                    <button 
-                        class="btn ${!isBorrowed ? 'btn-primary' : ''}" 
-                        style="width: 100%; margin-top: 1rem;" 
-                        ${isBorrowed ? 'disabled' : ''} 
-                        onclick="handleBorrow(${book.id})">
-                        ${buttonText}
-                    </button>
-                </div>
+                    <div class="book-icon">📖</div>
+                    
+                    ${buttonHTML} </div>
                 <div class="card">
                     <p><strong>Autor:</strong> ${book.author}</p>
                     <p><strong>Publicado:</strong> ${book.publishedYear}</p>
@@ -230,16 +277,16 @@ async function renderBookPreviewPage(bookId) {
                     <h3>Detalles del Libro</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="card"><p><strong>Categoría</strong><br>${book.category}</p></div>
-                        <div class="card"><p><strong>Disponibilidad</strong><br>${isBorrowed ? 'Ya prestado por ti' : 'Disponible'}</p></div>
+                        <div class="card"><p><strong>Disponibilidad</strong><br>${isBorrowed ? 'Ya prestado por ti' : (isInCart ? 'En tu lista' : 'Disponible')}</p></div>
                         <div class="card"><p><strong>Páginas</strong><br>${book.pages}</p></div>
                         <div class="card"><p><strong>Año</strong><br>${book.publishedYear}</p></div>
                     </div>
                 </div>
             </div>
         </div>
-    `;
+        `;
     showPage('bookPreview');
-    document.getElementById('back-to-list-btn').addEventListener('click', () => showPage('user'));
+    document.getElementById('back-to-list-btn').addEventListener('click', renderUserPage);
 }
 
 // Dibuja la página "Mis Libros"
@@ -276,6 +323,65 @@ async function renderMyBooksPage() {
     document.getElementById('back-to-user-btn').addEventListener('click', () => showPage('user'));
     if (myBooks.length === 0) {
         document.getElementById('explore-btn').addEventListener('click', () => showPage('user'));
+    }
+}
+
+function renderCartPage(){
+    const booksInCart = allBooks.filter(book => borrowCart.includes(book.id));
+pages.cart.innerHTML = `
+        <div class="header">
+            <div class="header-title">
+                <h1>Mi Lista de Préstamos</h1>
+                <p>Tienes ${booksInCart.length} ${booksInCart.length === 1 ? 'libro' : 'libros'} listos para pedir.</p>
+            </div>
+            <button id="back-to-user-btn-from-cart" class="btn btn-outline">← Volver a la Búsqueda</button>
+        </div>
+        
+        ${booksInCart.length === 0 
+            ? `<div class="card" style="text-align: center; grid-column: 1 / -1;">
+                    <h2>Tu lista está vacía</h2>
+                    <p style="color: #6c757d; margin-bottom: 1.5rem;">Añade libros desde la página de búsqueda.</p>
+                    <button id="explore-btn-from-cart" class="btn btn-primary">Explorar Libros</button>
+            </div>`
+            : `<div class_
+                    <div class="card">
+                        <h2>Resumen de Préstamo</h2>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Autor</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${booksInCart.map(book => `
+                                    <tr>
+                                        <td>${book.title}</td>
+                                        <td>${book.author}</td>
+                                        <td>
+                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="handleRemoveFromCart(${book.id})">
+                                                Quitar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        
+                        <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; margin-top: 1.5rem;" onclick="handleBorrowAll()">
+                            Confirmar Préstamo de (${booksInCart.length}) Libros
+                        </button>
+                    </div>
+            </div>`
+        }
+    `;
+    showPage('cart');
+
+    // Listeners
+    document.getElementById('back-to-user-btn-from-cart').addEventListener('click', () => showPage('user'));
+    if (booksInCart.length === 0) {
+        document.getElementById('explore-btn-from-cart').addEventListener('click', () => showPage('user'));
     }
 }
 
@@ -371,6 +477,64 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     }
 }
 
+function updateCartButton() {
+    const cartButton = document.getElementById('cart-btn');
+    if (cartButton){
+        cartButton.innerText = `Carrito (${borrowCart.length})`;
+    }
+}
+
+function handleAddToCart(bookId){
+    if(borrowCart.includes(bookId)){
+        alert("Este libro ya está en tu lista.");
+        return;
+    }
+    borrowCart.push(bookId);
+    alert("Libro añadido a la lista.");
+    if(pages.user.style.display === 'block'){
+        renderBookPreviewPage(bookId);
+    }
+}
+
+function handleRemoveFromCart(bookId){
+    const index = borrowCart.indexOf(bookId);
+    if(index>-1){
+        borrowCart.splice(index, 1);
+    }
+    if(pages.user.style.display === 'block'){
+        renderUserPage();
+    } else if (pages.bookPreview.style.display === 'block'){
+        renderBookPreviewPage(bookId);
+    }
+    else if(pages.cart.style.display === 'block'){
+        renderCartPage();
+    }
+}
+
+async function handleBorrowAll() {
+    if(borrowCart.lenght === 0){
+        alert("Tu lista está vacia.");
+        return;
+    }
+
+    const button = event.target;
+    button.disable = true;
+    button.innerText = 'Procesando...';
+
+    const data = await apiCall('prestar_varios.php', 'POST', {
+        id_usuario: currentUser.id,
+        id_libros: borrowCart
+    });
+    if (data && data.success){
+        alert(data.message);
+        borrowCart = [];
+        renderUserPage = [];
+    } else {
+        alert(data.error || "No se pudieron prestar los libros.");
+        button.disabled = false;
+        button.innerText = `Confirmar Préstamo de (${borrowCart.lenght} libros)`;
+    }
+}
 
 // Reacción al formulario de Login
 async function handleLogin(username, password) {
@@ -418,7 +582,7 @@ async function handleRegister(event) {
         alert(data.message);
         document.getElementById('tab-login').click(); 
     } else {
-        alert(data.error || "No se pudo registrar.");
+        alert((data && data.error) || "No se pudo registrar.");
     }
 }
 
@@ -429,21 +593,6 @@ function handleLogout() {
     showPage('auth');
 }
 
-// Reacción al botón de Pedir Prestado (la simple)
-async function handleBorrow(bookId) {
-    const data = await apiCall('prestar.php', 'POST', {
-        id_libro: bookId,
-        id_usuario: currentUser.id
-    });
-
-    if (data && data.success) {
-        alert(data.message);
-        // Reaccionamos recargando la página de usuario
-        renderUserPage();
-    } else {
-        alert(data.error || "No se pudo pedir el libro.");
-    }
-}
 
 // Reacción al botón de Devolver
 async function handleReturn(prestamoId) {
