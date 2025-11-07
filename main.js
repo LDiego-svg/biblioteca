@@ -117,7 +117,7 @@ async function renderUserPage() {
     // 1. Pedir al PHP los libros que YA he prestado
     const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
     
-    // 👇 MEJORA 1: Verificación defensiva 👇
+    //  MEJORA 1: Verificación defensiva 
     // Si myBorrowedBooks es null (por un error de API), lo tratamos como un array vacío.
     const borrowedIds = myBorrowedBooks ? myBorrowedBooks.map(b => b.id_libro) : [];
 
@@ -131,7 +131,7 @@ async function renderUserPage() {
             </div>
             <div class="header-actions">
                 <button id="my-books-btn" class="btn btn-outline">Mis Libros (${borrowedIds.length})</button>
-                <button id="cart-btn" class="btn btn-primary">Carrito (${borrowCart.length})</button>
+                <button id="cart-btn" class="btn btn-outline">Carrito (${borrowCart.length})</button>
                 <button id="logout-btn" class="btn btn-outline">Salir</button>
             </div>
         </div>
@@ -152,6 +152,21 @@ async function renderUserPage() {
 
     // 4. Dibuja la cuadrícula de libros
     renderBooksGrid(allBooks, borrowedIds);
+
+    try {
+        const allGridButtons = document.querySelectorAll('#books-grid .book-card .btn');
+        allGridButtons.forEach(button => {
+            if (button.innerText === '') { // Solo si está vacío
+                if (button.disabled) {
+                    button.innerText = 'Prestado';
+                } else if (button.classList.contains('btn-outline')) {
+                    button.innerText = 'Quitar de la Lista';
+                } else {
+                    button.innerText = 'Añadir al carrito';
+                }
+            }
+        });
+    } catch (e) { console.error('Error en hack de botones:', e); }
     
     // 5. Listeners
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -177,35 +192,33 @@ function renderBooksGrid(books, borrowedIds) {
         grid.innerHTML = "<p>No se encontraron libros.</p>";
         return;
     }
+
+    // PASO 1: Dibujamos los botones VACÍOS y SIN ONCLICK, solo con un ID
     grid.innerHTML = books.map(book => {
-        // Comprobamos si el libro ya está prestado (de la BD)
         const isBorrowed = borrowedIds.includes(book.id);
         const isInCart = borrowCart.includes(book.id);
-        
-        let buttonHTML = ('');
-        if (isBorrowed){
-            buttonHTML = `<button
-            class="btn
-            style="width: 100%; margin-top: 1rem;"
-            disabled>
-            Prestado
-            </button>`;
 
-        } else if (isInCart){
-            buttonHTML = `<button
-            class="btn btn-outline"
-            style="width: 100%; margin-top: 1rem;
-            onclick="event-stopPropagation(); handleRemoveFromCart(${book.id})">
-            Quitar de la lista
-            </button>`;
+        let buttonHTML = '';
+        const buttonId = `btn-book-${book.id}`; // ID único
 
+        if (isBorrowed) {
+            buttonHTML = `<button 
+                            class="btn" 
+                            style="width: 100%; margin-top: 1rem;" 
+                            disabled id="${buttonId}">
+                          </button>`; // <-- Vacío y sin onclick
+        } else if (isInCart) {
+            buttonHTML = `<button 
+                            class="btn btn-outline" 
+                            style="width: 100%; margin-top: 1rem;" 
+                            id="${buttonId}">
+                          </button>`; // <-- Vacío y sin onclick
         } else {
-            buttonHTML = `button
-            class="btn btn-primary"
-            style="width: 100%; margin-top: 1rem;
-            onclick="event.stopPropagation(); handleAddToCart(${book.id})">
-            Añadir a la lista
-            </button>`;
+            buttonHTML = `<button 
+                            class="btn btn-primary" 
+                            style="width: 100%; margin-top: 1rem;" 
+                            id="${buttonId}">
+                          </button>`; // <-- Vacío y sin onclick
         }
 
         return `
@@ -217,45 +230,67 @@ function renderBooksGrid(books, borrowedIds) {
                     </div>
                     <p class="author">de ${book.author}</p>
                 </div>
-                <button 
-                    class="btn ${!isBorrowed ? 'btn-primary' : ''}" 
-                    style="width: 100%; margin-top: 1rem;" 
-                    ${isBorrowed ? 'disabled' : ''} 
-                    onclick="event.stopPropagation(); handleBorrow(${book.id})">
-                    ${isBorrowed ? 'Prestado' : 'Pedir Prestado'}
-                </button>
+                ${buttonHTML}
             </div>
         `;
     }).join('');
+
+    // PASO 2: AHORA les añadimos el texto Y EL ONCLICK correcto
+    books.forEach(book => {
+        const button = document.getElementById(`btn-book-${book.id}`);
+        if (button) {
+            const isBorrowed = borrowedIds.includes(book.id);
+            const isInCart = borrowCart.includes(book.id);
+
+            if (isBorrowed) {
+                button.innerText = 'Prestado';
+            } else if (isInCart) {
+                button.innerText = 'Quitar de la Lista';
+                // ¡Añadimos el listener!
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation(); // <-- ¡La magia para que no te lleve a la preview!
+                    handleRemoveFromCart(book.id);
+                });
+            } else {
+                button.innerText = 'Añadir al carrito';
+                // ¡Añadimos el listener!
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation(); // <-- ¡La magia para que no te lleve a la preview!
+                    handleAddToCart(book.id);
+                });
+            }
+        }
+    });
 }
 
+
+// Dibuja la página de vista previa de un libro
 // Dibuja la página de vista previa de un libro
 async function renderBookPreviewPage(bookId) {
     const book = allBooks.find(b => b.id == bookId);
     if (!book) return;
 
-    // Obtenemos préstamos
     const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
-    const isBorrowed = myBorrowedBooks ? myBorrowedBooks.some(b=> b.id_libro == book.id) : false;
+    const isBorrowed = myBorrowedBooks ? myBorrowedBooks.some(b => b.id_libro == book.id) : false;
     const isInCart = borrowCart.includes(book.id);
-
+    
+    const buttonId = `btn-preview-${book.id}`; // ID único
     let buttonHTML = '';
+
+    // PASO 1: Dibujamos el botón VACÍO y SIN ONCLICK
     if (isBorrowed) {
-        buttonHTML = `<button class="btn" style="width: 100%; margin-top: 1rem;" disabled>Prestado</button>`;
+        buttonHTML = `<button class="btn" style="width: 100%; margin-top: 1rem;" disabled id="${buttonId}"></button>`;
     } else if (isInCart) {
-        buttonHTML = `<button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="handleRemoveFromCart(${book.id})">Quitar de la Lista</button>`;
+        buttonHTML = `<button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
     } else {
-        buttonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="handleAddToCart(${book.id})">Añadir a la Lista</button>`;
+        buttonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
     }
     
     pages.bookPreview.innerHTML = `
         <button id="back-to-list-btn" class="btn btn-outline" style="margin-bottom: 1.5rem;">← Volver a la lista</button>
-        
         <div class="book-preview-grid">
             <div class="book-preview-sidebar">
                 <div class="card">
-                    <div class="book-icon">📖</div>
-                    
                     ${buttonHTML} </div>
                 <div class="card">
                     <p><strong>Autor:</strong> ${book.author}</p>
@@ -284,7 +319,27 @@ async function renderBookPreviewPage(bookId) {
                 </div>
             </div>
         </div>
-        `;
+    `;
+    
+    // PASO 2: AHORA le añadimos el texto Y EL ONCLICK correcto
+    const previewButton = document.getElementById(buttonId);
+    if (previewButton) {
+        if (isBorrowed) {
+            previewButton.innerText = 'Ya Prestado';
+        } else if (isInCart) {
+            previewButton.innerText = 'Quitar de la Lista';
+            previewButton.addEventListener('click', (event) => {
+                // No necesitamos stopPropagation() aquí, pero no hace daño
+                handleRemoveFromCart(book.id);
+            });
+        } else {
+            previewButton.innerText = 'Añadir al carrito';
+            previewButton.addEventListener('click', (event) => {
+                handleAddToCart(book.id);
+            });
+        }
+    }
+
     showPage('bookPreview');
     document.getElementById('back-to-list-btn').addEventListener('click', renderUserPage);
 }
@@ -328,7 +383,7 @@ async function renderMyBooksPage() {
 
 function renderCartPage(){
     const booksInCart = allBooks.filter(book => borrowCart.includes(book.id));
-pages.cart.innerHTML = `
+    pages.cart.innerHTML = `
         <div class="header">
             <div class="header-title">
                 <h1>Mi Lista de Préstamos</h1>
@@ -379,7 +434,7 @@ pages.cart.innerHTML = `
     showPage('cart');
 
     // Listeners
-    document.getElementById('back-to-user-btn-from-cart').addEventListener('click', () => showPage('user'));
+    document.getElementById('back-to-user-btn-from-cart').addEventListener('click', renderUserPage);
     if (booksInCart.length === 0) {
         document.getElementById('explore-btn-from-cart').addEventListener('click', () => showPage('user'));
     }
