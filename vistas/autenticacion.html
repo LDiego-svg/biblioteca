@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticacion</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+        <div class="card" style="max-width: 450px; margin: 2rem auto;">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <h1 style="margin: 0;">Gestión de Biblioteca</h1>
+                <p style="color: #6c757d; margin: 0.5rem 0 0 0;">Pide prestado libros de tu biblioteca cercana</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button id="tab-login" class="btn btn-primary" style="flex: 1; border-radius: 0.375rem 0 0 0.375rem;">Iniciar Sesión</button>
+                <button id="tab-register" class="btn btn-outline" style="flex: 1; border-radius: 0 0.375rem 0.375rem 0; margin-left: -2px;">Registrarse</button>
+            </div>
+
+            <form id="login-form" style="margin-top: 1.5rem;">
+                <div class="input-group">
+                    <label for="login-username">Usuario</label>
+                    <input id="login-username" type="text" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Contraseña</label>
+                    <input id="login-password" type="password" class="input" required />
+                </div>
+                <p style="font-size: 0.8rem; color: #6c757d;">credenciales de usuario 'user'/'user' o de administrador 'admin'/'admin'</p>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Iniciar Sesión</button>
+            </form>
+
+            <form id="register-form" style="margin-top: 1.5rem; display: none;">
+                <div class="input-group">
+                    <label for="reg-fullname">Nombre Completo</label>
+                    <input id="reg-fullname" type="text" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="reg-username">Usuario</label>
+                    <input id="reg-username" type="text" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="reg-email">Email</label>
+                    <input id="reg-email" type="email" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Contraseña</label>
+                    <input id="reg-password" type="password" class="input" required />
+                </div>
+                <div class="input-group">
+                    <label for="reg-confirm-password">Confirmar Contraseña</label>
+                    <input id="reg-confirm-password" type="password" class="input" required />
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Crear Cuenta</button>
+            </form>
+        </div>
+</body>
+</html>

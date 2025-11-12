@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vista libro</title>
+</head>
+<body>
+    <button id="back-to-list-btn" class="btn btn-outline" style="margin-bottom: 1.5rem;">← Volver a la lista</button>
+<div class="book-preview-grid">
+    <div class="book-preview-sidebar">
+        <div class="card">
+            {{botonHTML}}
+        </div>
+        <div class="card">
+            <p><strong>Autor:</strong> {{autor}}</p>
+            <p><strong>Publicado:</strong> {{ano}}</p>
+            <p><strong>Páginas:</strong> {{paginas}}</p>
+        </div>
+    </div>
+    <div class="book-preview-details">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h1>{{titulo}}</h1>
+                <span class="category-badge">{{categoria}}</span>
+            </div>
+            <p class="author" style="margin-top:-1rem;">por {{autor}}</p>
+            <div class="rating">{{ratingEstrellas}}</div>
+            <h3>Descripción</h3>
+            <p>{{descripcion}}</p>
+            <hr style="margin: 2rem 0;">
+            <h3>Detalles del Libro</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="card"><p><strong>Categoría</strong><br>{{categoria}}</p></div>
+                <div class="card"><p><strong>Disponibilidad</strong><br>{{disponibilidad}}</p></div>
+                <div class="card"><p><strong>Páginas</strong><br>{{paginas}}</p></div>
+                <div class="card"><p><strong>Año</strong><br>{{ano}}</p></div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

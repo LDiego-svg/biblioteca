@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>usuario</title>
+</head>
+<body>
+    <div class="header">
+    <div class="header-title">
+        <div>
+            <h1>Buscar Libros</h1>
+            <p>Bienvenido, {{nombreUsuario}}</p> 
+        </div>
+    </div>
+    <div class="header-actions">
+        <button id="my-books-btn" class="btn btn-outline">Mis Libros ({{contadorMisLibros}})</button>
+        <button id="cart-btn" class="btn btn-outline">Carrito ({{contadorCarrito}})</button>
+        <button id="logout-btn" class="btn btn-outline">Salir</button>
+    </div>
+</div>
+<div class="card">
+    <input id="search-input" type="text" class="input" placeholder="Buscar libros por título o autor..." />
+</div>
+<div id="books-grid" class="books-grid"></div>
+</body>
+</html>

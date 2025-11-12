@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+    <div class="header-title">
+        <h1>Página de Administrador</h1>
+        <p>Sistema de Gestión de Librería</p>
+    </div>
+    <button id="admin-logout-btn" class="btn btn-outline">Salir</button>
+</div>
+
+<div class="books-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
+    <div class="card">
+        <p style="color: #6c757d;">Total de libros prestados</p>
+        <h1 id="admin-total-prestamos" style="font-size: 2.5rem;">...</h1>
+    </div>
+    <div class="card">
+        <p style="color: #6c757d;">Usuarios Activos</p>
+        <h1 id="admin-usuarios-activos" style="font-size: 2.5rem;">...</h1>
+    </div>
+    <div class="card">
+        <p style="color: #6c757d;">Préstamos (Hoy)</p>
+        <h1 style="font-size: 2.5rem;">0</h1>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Préstamos Recientes</h2>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Título del Libro</th>
+                <th>Prestado a</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody id="admin-tabla-cuerpo">
+            <tr>
+                <td colspan="3">Cargando...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

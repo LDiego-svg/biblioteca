@@ -23,62 +23,38 @@ function showPage(pageName) {
     }
 }
 
+async function cargarVista(nombreVista) {
+    try {
+        const response = await fetch(`vistas/${nombreVista}.html`);
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: No se encontró ${nombreVista}.html`);
+        }
+        return await response.text();
+    } catch (error) {
+        // Usamos 'error.message' en lugar del 'responseText' que no existe
+        console.error(`Error al cargar la plantilla: ${error.message}`); 
+        return null; // Devolvemos null para saber que falló
+    }
+}
+
 // --- 3. FUNCIONES DE RENDERIZADO---
 
 // Dibuja la página de Login Y Registro
-function renderAuthPage() {
-    pages.auth.innerHTML = `
-        <div class="card" style="max-width: 450px; margin: 2rem auto;">
-            <div style="text-align: center; margin-bottom: 1.5rem;">
-                <h1 style="margin: 0;">Gestión de Biblioteca</h1>
-                <p style="color: #6c757d; margin: 0.5rem 0 0 0;">Pide prestado libros de tu biblioteca cercana</p>
-            </div>
+async function renderAuthPage() {
+    // 1. Carga el HTML desde el archivo
+    const html = await cargarVista('autenticacion');
+    
+    // 2. Verificamos si el HTML se cargó antes de continuar
+    if (html === null) {
+        // Si 'cargarVista' falló, mostramos un error claro y nos detenemos
+        pages.auth.innerHTML = '<p>Error al cargar el contenido de la página. Revisa que la carpeta "vistas" y el archivo "autenticacion.html" existan y estén bien escritos.</p>';
+        return; // Salimos de la función para evitar el error 'null.addEventListener'
+    }
 
-            <div class="auth-tabs">
-                <button id="tab-login" class="btn btn-primary" style="flex: 1; border-radius: 0.375rem 0 0 0.375rem;">Iniciar Sesión</button>
-                <button id="tab-register" class="btn btn-outline" style="flex: 1; border-radius: 0 0.375rem 0.375rem 0; margin-left: -2px;">Registrarse</button>
-            </div>
+    // 3. Inserta el HTML en la página
+    pages.auth.innerHTML = html;
 
-            <form id="login-form" style="margin-top: 1.5rem;">
-                <div class="input-group">
-                    <label for="login-username">Usuario</label>
-                    <input id="login-username" type="text" class="input" value="user" required />
-                </div>
-                <div class="input-group">
-                    <label for="login-password">Contraseña</label>
-                    <input id="login-password" type="password" class="input" value="user" required />
-                </div>
-                <p style="font-size: 0.8rem; color: #6c757d;">credenciales de usuario 'user'/'user' o de administrador 'admin'/'admin'</p>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Iniciar Sesión</button>
-            </form>
-
-            <form id="register-form" style="margin-top: 1.5rem; display: none;">
-                <div class="input-group">
-                    <label for="reg-fullname">Nombre Completo</label>
-                    <input id="reg-fullname" type="text" class="input" required />
-                </div>
-                <div class="input-group">
-                    <label for="reg-username">Usuario</label>
-                    <input id="reg-username" type="text" class="input" required />
-                </div>
-                <div class="input-group">
-                    <label for="reg-email">Email</label>
-                    <input id="reg-email" type="email" class="input" required />
-                </div>
-                <div class="input-group">
-                    <label for="reg-password">Contraseña</label>
-                    <input id="reg-password" type="password" class="input" required />
-                </div>
-                <div class="input-group">
-                    <label for="reg-confirm-password">Confirmar Contraseña</label>
-                    <input id="reg-confirm-password" type="password" class="input" required />
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Crear Cuenta</button>
-            </form>
-        </div>
-    `;
-
-    // --- AÑADIR LOS LISTENERS ---
+    // 4. AÑADE LOS LISTENERS 
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const tabLogin = document.getElementById('tab-login');
@@ -114,45 +90,36 @@ function renderAuthPage() {
 
 // Dibuja la página principal del usuario
 async function renderUserPage() {
-    // 1. Pedir al PHP los libros que YA he prestado
-    const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
-    
-    //  MEJORA 1: Verificación defensiva 
-    // Si myBorrowedBooks es null (por un error de API), lo tratamos como un array vacío.
-    const borrowedIds = myBorrowedBooks ? myBorrowedBooks.map(b => b.id_libro) : [];
+    // 1. Pedir los datos primero
+    // (Usamos la corrección de '|| []' para evitar errores si está vacío)
+    const myBorrowedBooks = (await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`)) || [];
+    const borrowedIds = myBorrowedBooks.map(b => b.id_libro);
 
-    pages.user.innerHTML = `
-        <div class="header">
-            <div class="header-title">
-                <div>
-                    <h1>Buscar Libros</h1>
-                    <p>Bienvenido, ${currentUser.username}</p>
-                </div>
-            </div>
-            <div class="header-actions">
-                <button id="my-books-btn" class="btn btn-outline">Mis Libros (${borrowedIds.length})</button>
-                <button id="cart-btn" class="btn btn-outline">Carrito (${borrowCart.length})</button>
-                <button id="logout-btn" class="btn btn-outline">Salir</button>
-            </div>
-        </div>
-        <div class="card">
-            <input id="search-input" type="text" class="input" placeholder="Buscar libros por título o autor..." />
-        </div>
-        <div id="books-grid" class="books-grid"></div>
-    `;
-    
-    // 3. Obtenemos todos los libros del backend
-    allBooks = await apiCall('libros.php');
+    // 2. Cargar la plantilla HTML
+    let plantillaHtml = await cargarVista('usuario');
 
-    if (!allBooks) {
+    // 3. Reemplazar los marcadores con los datos reales
+    plantillaHtml = plantillaHtml.replace('{{nombreUsuario}}', currentUser.username);
+    plantillaHtml = plantillaHtml.replace('{{contadorMisLibros}}', borrowedIds.length);
+    plantillaHtml = plantillaHtml.replace('{{contadorCarrito}}', borrowCart.length);
+
+    // 4. Insertar el HTML final en la página
+    pages.user.innerHTML = plantillaHtml;
+
+    // 5. La lógica de la función (el resto) se queda igual.
+    // Obtenemos todos los libros del backend
+    allBooks = (await apiCall('libros.php')) || [];
+
+    if (allBooks.length === 0) {
         console.error("No se pudieron cargar 'allBooks'. Deteniendo render.");
         alert("Error: No se pudo conectar con la base de datos de libros. Revisa la consola.");
-        return; // Salimos de la función para evitar más errores
+        return; 
     }
 
-    // 4. Dibuja la cuadrícula de libros
+    // Dibuja la cuadrícula de libros
     renderBooksGrid(allBooks, borrowedIds);
 
+    // (El "hack" de los botones se queda aquí, es parte de la lógica de esta página)
     try {
         const allGridButtons = document.querySelectorAll('#books-grid .book-card .btn');
         allGridButtons.forEach(button => {
@@ -168,7 +135,7 @@ async function renderUserPage() {
         });
     } catch (e) { console.error('Error en hack de botones:', e); }
     
-    // 5. Listeners
+    // Listeners (se quedan aquí, son la lógica de esta vista)
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('my-books-btn').addEventListener('click', renderMyBooksPage);
     document.getElementById('cart-btn').addEventListener('click', renderCartPage);
@@ -182,6 +149,7 @@ async function renderUserPage() {
         
         renderBooksGrid(filteredBooks, borrowedIds);
     });
+
     showPage('user');
 }
 
@@ -265,63 +233,52 @@ function renderBooksGrid(books, borrowedIds) {
 
 
 // Dibuja la página de vista previa de un libro
-// Dibuja la página de vista previa de un libro
 async function renderBookPreviewPage(bookId) {
+    // 1. OBTENER DATOS
     const book = allBooks.find(b => b.id == bookId);
     if (!book) return;
 
-    const myBorrowedBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
-    const isBorrowed = myBorrowedBooks ? myBorrowedBooks.some(b => b.id_libro == book.id) : false;
+    // (Usamos la corrección '|| []' para evitar el bug)
+    const myBorrowedBooks = (await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`)) || [];
+    const isBorrowed = myBorrowedBooks.some(b => b.id_libro == book.id);
     const isInCart = borrowCart.includes(book.id);
-    
-    const buttonId = `btn-preview-${book.id}`; // ID único
-    let buttonHTML = '';
 
-    // PASO 1: Dibujamos el botón VACÍO y SIN ONCLICK
+    // 2. CARGAR PLANTILLA
+    let plantillaHtml = await cargarVista('vista_libro');
+
+    // 3. PREPARAR DATOS DINÁMICOS
+    const buttonId = `btn-preview-${book.id}`; // ID único para el botón
+    let botonHTML = ''; // HTML del botón
+    let disponibilidad = 'Disponible'; // Texto de disponibilidad
+
     if (isBorrowed) {
-        buttonHTML = `<button class="btn" style="width: 100%; margin-top: 1rem;" disabled id="${buttonId}"></button>`;
+        botonHTML = `<button class="btn" style="width: 100%; margin-top: 1rem;" disabled id="${buttonId}"></button>`;
+        disponibilidad = 'Ya prestado por ti';
     } else if (isInCart) {
-        buttonHTML = `<button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
+        botonHTML = `<button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
+        disponibilidad = 'En tu lista';
     } else {
-        buttonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
+        botonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
     }
+
+    const ratingEstrellas = '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating);
+
+    // 4. REEMPLAZAR MARCADORES (Usamos .replace() varias veces)
+    plantillaHtml = plantillaHtml.replace('{{botonHTML}}', botonHTML);
+    plantillaHtml = plantillaHtml.replace(new RegExp('{{autor}}', 'g'), book.author);
+    plantillaHtml = plantillaHtml.replace(new RegExp('{{ano}}', 'g'), book.publishedYear);
+    plantillaHtml = plantillaHtml.replace(new RegExp('{{paginas}}', 'g'), book.pages);
+    plantillaHtml = plantillaHtml.replace('{{titulo}}', book.title);
+    plantillaHtml = plantillaHtml.replace(new RegExp('{{categoria}}', 'g'), book.category);
+    plantillaHtml = plantillaHtml.replace('{{ratingEstrellas}}', ratingEstrellas);
+    plantillaHtml = plantillaHtml.replace('{{descripcion}}', book.description);
+    plantillaHtml = plantillaHtml.replace('{{disponibilidad}}', disponibilidad);
+
+    // 5. INSERTAR HTML
+    pages.bookPreview.innerHTML = plantillaHtml;
     
-    pages.bookPreview.innerHTML = `
-        <button id="back-to-list-btn" class="btn btn-outline" style="margin-bottom: 1.5rem;">← Volver a la lista</button>
-        <div class="book-preview-grid">
-            <div class="book-preview-sidebar">
-                <div class="card">
-                    ${buttonHTML} </div>
-                <div class="card">
-                    <p><strong>Autor:</strong> ${book.author}</p>
-                    <p><strong>Publicado:</strong> ${book.publishedYear}</p>
-                    <p><strong>Páginas:</strong> ${book.pages}</p>
-                </div>
-            </div>
-            <div class="book-preview-details">
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h1>${book.title}</h1>
-                        <span class="category-badge">${book.category}</span>
-                    </div>
-                    <p class="author" style="margin-top:-1rem;">por ${book.author}</p>
-                    <div class="rating">${'★'.repeat(book.rating)}${'☆'.repeat(5 - book.rating)}</div>
-                    <h3>Descripción</h3>
-                    <p>${book.description}</p>
-                    <hr style="margin: 2rem 0;">
-                    <h3>Detalles del Libro</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="card"><p><strong>Categoría</strong><br>${book.category}</p></div>
-                        <div class="card"><p><strong>Disponibilidad</strong><br>${isBorrowed ? 'Ya prestado por ti' : (isInCart ? 'En tu lista' : 'Disponible')}</p></div>
-                        <div class="card"><p><strong>Páginas</strong><br>${book.pages}</p></div>
-                        <div class="card"><p><strong>Año</strong><br>${book.publishedYear}</p></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // PASO 2: AHORA le añadimos el texto Y EL ONCLICK correcto
+    // 6. LÓGICA DE BOTONES (El "hack" que hicimos)
+    // Le añadimos el texto Y EL ONCLICK al botón que acabamos de insertar
     const previewButton = document.getElementById(buttonId);
     if (previewButton) {
         if (isBorrowed) {
@@ -329,7 +286,6 @@ async function renderBookPreviewPage(bookId) {
         } else if (isInCart) {
             previewButton.innerText = 'Quitar de la Lista';
             previewButton.addEventListener('click', (event) => {
-                // No necesitamos stopPropagation() aquí, pero no hace daño
                 handleRemoveFromCart(book.id);
             });
         } else {
@@ -340,40 +296,56 @@ async function renderBookPreviewPage(bookId) {
         }
     }
 
+    // 7. LISTENERS DE LA PÁGINA
     showPage('bookPreview');
     document.getElementById('back-to-list-btn').addEventListener('click', renderUserPage);
 }
 
 // Dibuja la página "Mis Libros"
 async function renderMyBooksPage() {
+    // 1. OBTENER DATOS
     const myBooks = await apiCall(`mis_libros.php?id_usuario=${currentUser.id}`);
 
-    pages.myBooks.innerHTML = `
-        <div class="header">
-            <div class="header-title">
-                <h1>Mis Libros Prestados</h1>
-                <p>Tienes ${myBooks.length} ${myBooks.length === 1 ? 'libro' : 'libros'} prestado${myBooks.length === 1 ? '' : 's'}</p>
+    // 2. CARGAR PLANTILLA "CÁSCARA"
+    let plantillaHtml = await cargarVista('mis_libros');
+
+    // 3. PREPARAR DATOS DINÁMICOS
+    const contador = myBooks.length;
+    const pluralLibro = contador === 1 ? 'libro' : 'libros';
+    const pluralS = contador === 1 ? '' : 's';
+
+    // 4. REEMPLAZAR MARCADORES
+    plantillaHtml = plantillaHtml.replace('{{contador}}', contador);
+    plantillaHtml = plantillaHtml.replace('{{pluralLibro}}', pluralLibro);
+    plantillaHtml = plantillaHtml.replace('{{pluralS}}', pluralS);
+
+    // 5. INSERTAR HTML "CÁSCARA"
+    pages.myBooks.innerHTML = plantillaHtml;
+
+    // 6. GENERAR Y INSERTAR EL CONTENIDO DINÁMICO (La cuadrícula)
+    const gridContainer = document.getElementById('my-books-grid');
+    
+    if (myBooks.length === 0) {
+        // Opción A: No hay libros
+        gridContainer.innerHTML = `
+            <div class="card" style="grid-column: 1 / -1; text-align: center;">
+                <h2>No tienes libros prestados</h2>
+                <p style="color: #6c757d; margin-bottom: 1.5rem;">Comienza a explorar nuestra colección y pide prestado algunos libros</p>
+                <button id="explore-btn" class="btn btn-primary">Explorar Libros</button>
+            </div>`;
+    } else {
+        // Opción B: Sí hay libros
+        gridContainer.innerHTML = myBooks.map(book => `
+            <div class="card">
+                <h3>${book.title}</h3>
+                <p class="author">de ${book.author}</p>
+                <p><strong>Prestado el:</strong> ${book.fecha_prestamo}</p>
+                <button class="btn btn-outline" style="width:100%; margin-top:1rem;" onclick="handleReturn(${book.id_prestamo})">Devolver Libro</button>
             </div>
-            <button id="back-to-user-btn" class="btn btn-outline">← Volver</button>
-        </div>
-        <div id="my-books-grid" class="books-grid">
-            ${myBooks.length === 0 
-                ? `<div class="card" style="grid-column: 1 / -1; text-align: center;">
-                        <h2>No tienes libros prestados</h2>
-                        <p style="color: #6c757d; margin-bottom: 1.5rem;">Comienza a explorar nuestra colección y pide prestado algunos libros</p>
-                        <button id="explore-btn" class="btn btn-primary">Explorar Libros</button>
-                </div>`
-                : myBooks.map(book => `
-                    <div class="card">
-                        <h3>${book.title}</h3>
-                        <p class="author">de ${book.author}</p>
-                        <p><strong>Prestado el:</strong> ${book.fecha_prestamo}</p>
-                        <button class="btn btn-outline" style="width:100%; margin-top:1rem;" onclick="handleReturn(${book.id_prestamo})">Devolver Libro</button>
-                    </div>
-                `).join('')
-            }
-        </div>
-    `;
+        `).join('');
+    }
+
+    // 7. LISTENERS
     showPage('myBooks');
     document.getElementById('back-to-user-btn').addEventListener('click', () => showPage('user'));
     if (myBooks.length === 0) {
@@ -381,59 +353,74 @@ async function renderMyBooksPage() {
     }
 }
 
-function renderCartPage(){
+// Dibuja la página de la Lista de Préstamos (Carrito)
+async function renderCartPage() {
+    // 1. OBTENER DATOS
     const booksInCart = allBooks.filter(book => borrowCart.includes(book.id));
-    pages.cart.innerHTML = `
-        <div class="header">
-            <div class="header-title">
-                <h1>Mi Lista de Préstamos</h1>
-                <p>Tienes ${booksInCart.length} ${booksInCart.length === 1 ? 'libro' : 'libros'} listos para pedir.</p>
-            </div>
-            <button id="back-to-user-btn-from-cart" class="btn btn-outline">← Volver a la Búsqueda</button>
-        </div>
-        
-        ${booksInCart.length === 0 
-            ? `<div class="card" style="text-align: center; grid-column: 1 / -1;">
-                    <h2>Tu lista está vacía</h2>
-                    <p style="color: #6c757d; margin-bottom: 1.5rem;">Añade libros desde la página de búsqueda.</p>
-                    <button id="explore-btn-from-cart" class="btn btn-primary">Explorar Libros</button>
-            </div>`
-            : `<div class_
-                    <div class="card">
-                        <h2>Resumen de Préstamo</h2>
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Título</th>
-                                    <th>Autor</th>
-                                    <th>Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${booksInCart.map(book => `
-                                    <tr>
-                                        <td>${book.title}</td>
-                                        <td>${book.author}</td>
-                                        <td>
-                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="handleRemoveFromCart(${book.id})">
-                                                Quitar
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                        
-                        <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; margin-top: 1.5rem;" onclick="handleBorrowAll()">
-                            Confirmar Préstamo de (${booksInCart.length}) Libros
-                        </button>
-                    </div>
-            </div>`
-        }
-    `;
-    showPage('cart');
 
-    // Listeners
+    // 2. CARGAR PLANTILLA "CÁSCARA"
+    let plantillaHtml = await cargarVista('carrito');
+
+    // 3. PREPARAR DATOS DINÁMICOS
+    const contador = booksInCart.length;
+    const pluralLibro = contador === 1 ? 'libro' : 'libros';
+    const pluralS = contador === 1 ? '' : 's';
+
+    // 4. REEMPLAZAR MARCADORES
+    plantillaHtml = plantillaHtml.replace('{{contador}}', contador);
+    plantillaHtml = plantillaHtml.replace('{{pluralLibro}}', pluralLibro);
+    plantillaHtml = plantillaHtml.replace('{{pluralS}}', pluralS);
+
+    // 5. INSERTAR HTML "CÁSCARA"
+    pages.cart.innerHTML = plantillaHtml;
+
+    // 6. GENERAR Y INSERTAR EL CONTENIDO DINÁMICO
+    const contentContainer = document.getElementById('cart-content-container');
+    
+    if (booksInCart.length === 0) {
+        // Opción A: Carrito vacío
+        contentContainer.innerHTML = `
+            <div class="card" style="text-align: center; grid-column: 1 / -1;">
+                <h2>Tu lista está vacía</h2>
+                <p style="color: #6c757d; margin-bottom: 1.5rem;">Añade libros desde la página de búsqueda.</p>
+                <button id="explore-btn-from-cart" class="btn btn-primary">Explorar Libros</button>
+            </div>`;
+    } else {
+        // Opción B: Carrito con libros
+        contentContainer.innerHTML = `
+            <div class="card">
+                <h2>Resumen de Préstamo</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Autor</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${booksInCart.map(book => `
+                            <tr>
+                                <td>${book.title}</td>
+                                <td>${book.author}</td>
+                                <td>
+                                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="handleRemoveFromCart(${book.id})">
+                                        Quitar
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; margin-top: 1.5rem;" onclick="handleBorrowAll(event)">
+                    Confirmar Préstamo de (${booksInCart.length}) Libros
+                </button>
+            </div>`;
+    }
+
+    // 7. LISTENERS
+    showPage('cart');
     document.getElementById('back-to-user-btn-from-cart').addEventListener('click', renderUserPage);
     if (booksInCart.length === 0) {
         document.getElementById('explore-btn-from-cart').addEventListener('click', () => showPage('user'));
@@ -442,57 +429,39 @@ function renderCartPage(){
 
 // Dibuja la página de Administrador
 async function renderAdminPage() {
-    const allBorrowedBooks = await apiCall('admin_data.php');
+    // 1. CARGAR PLANTILLA "CÁSCARA"
+    // Lo hacemos primero para que el usuario vea la estructura
+    const plantillaHtml = await cargarVista('admin');
+    pages.admin.innerHTML = plantillaHtml;
+
+    // 2. OBTENER DATOS (Usando la corrección del bug que hicimos)
+    const allBorrowedBooks = (await apiCall('admin_data.php')) || [];
+
+    // 3. PREPARAR DATOS DINÁMICOS
     const totalPrestamos = allBorrowedBooks.length;
     const usuariosActivos = [...new Set(allBorrowedBooks.map(b => b.username))].length;
 
-    pages.admin.innerHTML = `
-        <div class="header">
-            <div class="header-title">
-                <h1>Página de Administrador</h1>
-                <p>Sistema de Gestión de Librería</p>
-            </div>
-            <button id="admin-logout-btn" class="btn btn-outline">Salir</button>
-        </div>
-        
-        <div class="books-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
-            <div class="card">
-                <p style="color: #6c757d;">Total de libros prestados</p>
-                <h1 style="font-size: 2.5rem;">${totalPrestamos}</h1>
-            </div>
-            <div class="card">
-                <p style="color: #6c757d;">Usuarios Activos</p>
-                <h1 style="font-size: 2.5rem;">${usuariosActivos}</h1>
-            </div>
-            <div class="card">
-                <p style="color: #6c757d;">Préstamos (Hoy)</p>
-                <h1 style="font-size: 2.5rem;">0</h1>
-            </div>
-        </div>
+    // 4. INSERTAR DATOS EN LAS TARJETAS
+    // (Usamos .getElementById para esto, es más limpio)
+    document.getElementById('admin-total-prestamos').innerText = totalPrestamos;
+    document.getElementById('admin-usuarios-activos').innerText = usuariosActivos;
 
-        <div class="card">
-            <h2>Préstamos Recientes</h2>
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Título del Libro</th>
-                        <th>Prestado a</th>
-                        <th>Fecha</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${allBorrowedBooks.length === 0 ? '<tr><td colspan="3">No hay préstamos aún.</td></tr>' : ''}
-                    ${allBorrowedBooks.map(book => `
-                        <tr>
-                            <td>${book.title}</td>
-                            <td>${book.username}</td>
-                            <td>${book.fecha_prestamo}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    // 5. GENERAR Y INSERTAR EL CONTENIDO DINÁMICO (La tabla)
+    const tablaCuerpo = document.getElementById('admin-tabla-cuerpo');
+    
+    if (allBorrowedBooks.length === 0) {
+        tablaCuerpo.innerHTML = '<tr><td colspan="3">No hay préstamos aún.</td></tr>';
+    } else {
+        tablaCuerpo.innerHTML = allBorrowedBooks.map(book => `
+            <tr>
+                <td>${book.title}</td>
+                <td>${book.username}</td>
+                <td>${book.fecha_prestamo}</td>
+            </tr>
+        `).join('');
+    }
+
+    // 6. LISTENERS
     showPage('admin');
     document.getElementById('admin-logout-btn').addEventListener('click', handleLogout);
 }
@@ -547,6 +516,8 @@ function handleAddToCart(bookId){
     borrowCart.push(bookId);
     alert("Libro añadido a la lista.");
     if(pages.user.style.display === 'block'){
+        renderUserPage();
+    }else if (pages.bookPreview.style.display === 'block'){
         renderBookPreviewPage(bookId);
     }
 }
@@ -566,15 +537,15 @@ function handleRemoveFromCart(bookId){
     }
 }
 
-async function handleBorrowAll() {
-    if(borrowCart.lenght === 0){
+async function handleBorrowAll(event) {
+    if (borrowCart.length === 0){
         alert("Tu lista está vacia.");
         return;
     }
 
     const button = event.target;
     button.disable = true;
-    button.innerText = 'Procesando...';
+    button.innerText = 'Pedido Realizado.';
 
     const data = await apiCall('prestar_varios.php', 'POST', {
         id_usuario: currentUser.id,
@@ -583,7 +554,7 @@ async function handleBorrowAll() {
     if (data && data.success){
         alert(data.message);
         borrowCart = [];
-        renderUserPage = [];
+        renderUserPage();
     } else {
         alert(data.error || "No se pudieron prestar los libros.");
         button.disabled = false;
