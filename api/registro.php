@@ -1,19 +1,19 @@
 <?php
-include 'db_config.php'; // Incluimos la conexión a la BD
+include 'db_config.php'; // Carga la conexión $conn y los datos $data
 
-// Recibimos los 4 campos
+// 1. Obtener datos del JSON
 $username = $data['username'] ?? '';
 $password = $data['password'] ?? '';
 $fullName = $data['fullName'] ?? '';
 $email = $data['email'] ?? '';
 
-// Validamos los 4 campos
+// 2. Validación de entrada
 if (empty($username) || empty($password) || empty($fullName) || empty($email)) {
     echo json_encode(['error' => 'Nombre, email, usuario y contraseña son requeridos.']);
     exit;
 }
 
-// 1. VERIFICAR SI EL USUARIO O EMAIL YA EXISTEN
+// 3. Verificar si el usuario o email ya existen
 $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE username = :username OR email = :email");
 $stmt_check->bindParam(':username', $username);
 $stmt_check->bindParam(':email', $email); 
@@ -24,15 +24,19 @@ if ($stmt_check->fetch()) {
     exit;
 }
 
-// 2. ¡SEGURIDAD! Hasheamos la contraseña
+// 4. Hashear la contraseña (¡Seguridad!)
+// PASSWORD_DEFAULT usa el algoritmo más fuerte disponible (actualmente bcrypt)
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-// 3. INSERTAR EL NUEVO USUARIO
+// 5. Insertar el nuevo usuario
 try {
-    $stmt_insert = $conn->prepare("INSERT INTO usuarios (username, password, fullName, email, role) VALUES (:username, :password, :fullName, :email, 'user')");
+    $stmt_insert = $conn->prepare(
+        "INSERT INTO usuarios (username, password, fullName, email, role) 
+        VALUES (:username, :password, :fullName, :email, 'user')"
+    );
     
     $stmt_insert->bindParam(':username', $username);
-    $stmt_insert->bindParam(':password', $hashed_password); // <-- Guardamos el hash
+    $stmt_insert->bindParam(':password', $hashed_password); // Guardamos el hash, no el password
     $stmt_insert->bindParam(':fullName', $fullName);
     $stmt_insert->bindParam(':email', $email);
 
@@ -43,7 +47,7 @@ try {
     }
 
 } catch (PDOException $e) {
-    // Si la base de datos falla (ej. una columna no existe), esto nos lo dirá.
+    // Captura errores de SQL (ej. una columna no existe o restricción UNIQUE)
     echo json_encode(['error' => 'Error de base de datos: ' . $e->getMessage()]);
 }
 ?>

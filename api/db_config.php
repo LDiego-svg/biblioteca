@@ -1,27 +1,48 @@
 <?php
-// Configuración de la conexión a la base de datos
-$servername = "localhost"; // El servidor de XAMPP
-$username_db = "root";     // Usuario por defecto de XAMPP
-$password_db = "";         // Contraseña por defecto de XAMPP (vacía)
-$dbname = "biblioteca_db";   // El nombre de tu base de datos
+// --- CONFIGURACIÓN DE BASE DE DATOS ---
+$servername = "localhost";
+$username_db = "root";
+$password_db = "";
+$dbname = "biblioteca_db";
+$charset = "utf8";
 
+// --- CONEXIÓN PDO ---
 try {
-    // Creamos una conexión PDO (la forma moderna de conectarse a MySQL con PHP)
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8", $username_db, $password_db);
-    // Configuramos para que reporte errores
+    // 1. Crear la conexión PDO
+    $dsn = "mysql:host=$servername;dbname=$dbname;charset=$charset";
+    $conn = new PDO($dsn, $username_db, $password_db);
+    
+    // 2. Configurar atributos de PDO
+    // Reportar todos los errores de SQL
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
 } catch(PDOException $e) {
-    // Si la conexión falla, morimos y mostramos el error
-    die("Error de conexión: " . $e->getMessage());
+    // 3. Fallo de conexión
+    // Si la conexión falla, detenemos todo y enviamos un error JSON.
+    // Esto es crucial para que el frontend (apiCall) pueda interpretar el error.
+    header("Content-Type: application/json; charset=UTF-8");
+    http_response_code(500); // Internal Server Error
+    die(json_encode(['error' => 'Error de conexión a la base de datos: ' . $e->getMessage()]));
 }
 
-// Esto es para asegurarnos de que el PHP responda con JSON y permita peticiones
-header("Access-Control-Allow-Origin: *"); // Permite cualquier origen (para desarrollo)
+// --- CONFIGURACIÓN DE CABECERAS (HEADERS) ---
+
+// 1. Configuración de CORS (Cross-Origin Resource Sharing)
+// Permite peticiones desde cualquier origen (ej. 'localhost:3000')
+// NOTA: Para producción, '*' es inseguro. Deberías cambiarlo por tu dominio real.
+header("Access-Control-Allow-Origin: *"); 
+// 2. Cabeceras permitidas
 header("Access-Control-Allow-Headers: *");
+// 3. Métodos HTTP permitidos
 header("Access-Control-Allow-Methods: *");
+// 4. Tipo de contenido
 header("Content-Type: application/json; charset=UTF-8");
 
-// Leemos los datos JSON que nos envía el JavaScript
+// --- LECTURA DE INPUT JSON ---
+
+// Lee el 'body' de la petición (ej. desde un POST de JavaScript)
 $json_input = file_get_contents('php://input');
+
+// Decodifica el JSON en un array asociativo de PHP (ej. $data['username'])
 $data = json_decode($json_input, true);
 ?>
