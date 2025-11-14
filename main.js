@@ -1,11 +1,11 @@
 // --- 1. CONFIGURACIÓN GLOBAL Y ESTADO ---
 
-const API_URL = 'api/'; // Endpoint base de la API
+const API_URL = 'api/'; 
 
 // Estado global de la aplicación
-let currentUser = null; // Objeto del usuario autenticado
-let allBooks = [];      // Caché local de la lista completa de libros
-let borrowCart = [];    // Array de IDs de libros (estado del carrito)
+let currentUser = null; 
+let allBooks = [];      
+let borrowCart = [];    
 
 // Referencias a los contenedores de vistas del DOM
 const pages = {
@@ -429,22 +429,29 @@ async function renderAdminPage() {
     pages.admin.innerHTML = plantillaHtml;
 
     // 2. Obtener datos
-    const allBorrowedBooks = (await apiCall('admin_data.php')) || [];
+    const [allBorrowedBooks, allInventoryBooks] = await Promise.all([
+        apiCall('admin_data.php'),
+        apiCall('libros.php')
+    ]);
 
     // 3. Calcular estadísticas
+    const borrowed = allBorrowedBooks || [];
+    const inventory = allInventoryBooks || [];
     const totalPrestamos = allBorrowedBooks.length;
-    const usuariosActivos = [...new Set(allBorrowedBooks.map(b => b.username))].length; // Conteo de únicos
+    const usuariosActivos = [...new Set(borrowed.map(b => b.username))].length; // Conteo de únicos
+    const totalInventario = inventory.length;
 
     // 4. Inyectar estadísticas
     document.getElementById('admin-total-prestamos').innerText = totalPrestamos;
     document.getElementById('admin-usuarios-activos').innerText = usuariosActivos;
+    document.getElementById('admin-total-inventario').innerText = totalInventario;
 
     // 5. Renderizar tabla de préstamos
-    const tablaCuerpo = document.getElementById('admin-tabla-cuerpo');
-    if (allBorrowedBooks.length === 0) {
-        tablaCuerpo.innerHTML = '<tr><td colspan="3">No hay préstamos aún.</td></tr>';
+    const tablaCuerpoPrestamos = document.getElementById('admin-tabla-cuerpo');
+    if (borrowed.length === 0) {
+        tablaCuerpoPrestamos.innerHTML = '<tr><td colspan="3">No hay préstamos aún.</td></tr>';
     } else {
-        tablaCuerpo.innerHTML = allBorrowedBooks.map(book => `
+        tablaCuerpoPrestamos.innerHTML = borrowed.map(book => `
             <tr>
                 <td>${book.title}</td>
                 <td>${book.username}</td>
@@ -453,9 +460,28 @@ async function renderAdminPage() {
         `).join('');
     }
 
-    // 6. Listeners
+    //6. Renderizar tabla de gestion de inventario
+    const tablaCuerpoInventario = document.getElementById('admin-tabla-inventario');
+    if (inventory.length === 0){
+        tablaCuerpoInventario.innerHTML = `<tr><td colspan="3">No hay libros en el inventario.</td></tr>`;
+    } else {
+        tablaCuerpoInventario.innerHTML = inventory.map(book => `
+            <tr>
+                <td>${book.title}</td>
+                <td>${book.author}</td>
+                <td>
+                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="handleEliminarLibro(${book.id})">
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+            `).join('');
+    }
+
+    // 7. Listeners
     showPage('admin');
     document.getElementById('admin-logout-btn').addEventListener('click', handleLogout);
+    document.getElementById('form-agregar-libro').addEventListener('submit', handleAgregarLibro);
 }
 
 // --- 4. MANEJADORES DE LÓGICA (API Y ACCIONES) ---
@@ -657,6 +683,53 @@ async function handleReturn(prestamoId) {
         renderMyBooksPage(); // Recargar la vista 'mis_libros'
     } else {
         alert(data.error || "No se pudo devolver el libro.");
+    }
+}
+
+/**
+ * Maneja el submit del formulario de "Añadir Libro" (Admin).
+ * @param {Event} event - Evento 'submit' del formulario.
+ */
+async function handleAgregarLibro(event) {
+    event.preventDefault();
+
+    const title = document.getElementById('reg-title').value;
+    const author = document.getElementById('reg-author').value;
+    const category = document.getElementById('reg-category').value;
+    const description = document.getElementById('reg-description').value;
+
+    const data = await apiCall('agregar_libro.php', 'POST', {
+        title: title,
+        author: author,
+        category: category,
+        description: description
+    });
+    if (data && data.success){
+        alert(data.message);
+        renderAdminPage();
+    } else {
+        alert(data.error || "No se puso añadir el libro.");
+    }
+}
+
+/**
+ * Llama a la API para eliminar un libro del inventario.
+ * @param {number} libroId - ID del libro a eliminar.
+ */
+async function handleEliminarLibro(libroId) {
+    if (!confirm("¿Estás seguro de que quieres eliminar este libro del inventario?\nEsta acción no se puede deshacer.")) {
+        return;
+    }
+
+    const data = await apiCall('eliminar_libro.php', 'POST', {
+        id_libro: libroId
+    });
+
+    if (data && data.success) {
+        alert(data.message);
+        renderAdminPage();
+    } else {
+        alert(data.error || "No se pudo eliminar el libro.");
     }
 }
 

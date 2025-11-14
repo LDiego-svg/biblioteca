@@ -25,12 +25,56 @@
         <h1 id="admin-usuarios-activos" style="font-size: 2.5rem;">...</h1>
     </div>
     <div class="card">
-        <p style="color: #6c757d;">Préstamos (Hoy)</p>
-        <h1 style="font-size: 2.5rem;">0</h1>
+        <p style="color: #6c757d;">Total de Libros</p>
+        <h1 id="admin-total-inventario" style="font-size: 2.5rem;">...</h1>
     </div>
 </div>
 
-<div class="card">
+<div class="book-preview-grid">
+
+    <div class="card">
+        <h2>Añadir Nuevo Libro</h2>
+        <form id="form-agregar-libro">
+            <div class="input-group">
+                <label for="reg-title">Título</label>
+                <input id="reg-title" type="text" class="input" required />
+            </div>
+            <div class="input-group">
+                <label for="reg-author">Autor</label>
+                <input id="reg-author" type="text" class="input" required />
+            </div>
+            <div class="input-group">
+                <label for="reg-category">Categoría</label>
+                <input id="reg-category" type="text" class="input" required />
+            </div>
+            <div class="input-group">
+                <label for="reg-description">Descripción</label>
+                <textarea id="reg-description" class="input" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Añadir Libro</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Gestionar Inventario</h2>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Autor</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="admin-tabla-inventario">
+                <tr>
+                    <td colspan="3">Cargando...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
     <h2>Préstamos Recientes</h2>
     <table class="admin-table">
         <thead>
