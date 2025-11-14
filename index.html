@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Biblioteca</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 </head>
 <body>
     <div id="app-container">
@@ -14,6 +15,22 @@
         <div id="my-books-page" class="page" style="display: none;"></div>
         <div id="cart-page" class="page" style="display: none;"></div>
         <div id="admin-page" class="page" style="display: none;"></div>
+    </div>
+
+    <div id="qr-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Código QR - Mostrador</h2>
+            <div id="qr-code-container" style="text-align: center; padding: 2rem;"></div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button id="btn-descargar-qr" class="btn btn-primary" style="flex: 1;">
+                    Descargar QR
+                </button>
+                <button id="btn-cerrar-modal" class="btn btn-outline" style="flex: 1;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="main.js"></script>

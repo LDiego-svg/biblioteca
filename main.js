@@ -346,48 +346,44 @@ async function renderMyBooksPage() {
  * Renderiza la vista del Carrito (lista de préstamos pendientes).
  */
 async function renderCartPage() {
-    // 1. Obtener datos (filtrando la caché 'allBooks' con 'borrowCart')
+    // 1. Obtener datos
     const booksInCart = allBooks.filter(book => borrowCart.includes(book.id));
 
     // 2. Cargar plantilla base
     let plantillaHtml = await cargarVista('carrito');
     if (!plantillaHtml) return;
 
-    // 3. Pluralización
+    // 3. Pluralización y Inyección
     const contador = booksInCart.length;
     const pluralLibro = contador === 1 ? 'libro' : 'libros';
     const pluralS = contador === 1 ? '' : 's';
 
-    // 4. Inyectar datos
     plantillaHtml = plantillaHtml.replace('{{contador}}', contador);
     plantillaHtml = plantillaHtml.replace('{{pluralLibro}}', pluralLibro);
     plantillaHtml = plantillaHtml.replace('{{pluralS}}', pluralS);
     pages.cart.innerHTML = plantillaHtml;
 
-    // 5. Renderizar contenido dinámico
+    // 4. Renderizar contenido dinámico
     const contentContainer = document.getElementById('cart-content-container');
     
     if (booksInCart.length === 0) {
         // Estado vacío
         contentContainer.innerHTML = `
-            <div class="card" style="text-align: center; grid-column: 1 / -1;">
+            <div class="card" style="grid-column: 1 / -1;">
                 <h2>Tu lista está vacía</h2>
                 <p style="color: #6c757d; margin-bottom: 1.5rem;">Añade libros desde la página de búsqueda.</p>
                 <button id="explore-btn-from-cart" class="btn btn-primary">Explorar Libros</button>
             </div>`;
+        
+        document.getElementById('explore-btn-from-cart').addEventListener('click', () => showPage('user'));
+
     } else {
         // Renderizar tabla de resumen
         contentContainer.innerHTML = `
             <div class="card">
                 <h2>Resumen de Préstamo</h2>
                 <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Título</th>
-                            <th>Autor</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Título</th><th>Autor</th><th>Acción</th></tr></thead>
                     <tbody>
                         ${booksInCart.map(book => `
                             <tr>
@@ -403,19 +399,32 @@ async function renderCartPage() {
                     </tbody>
                 </table>
                 
-                <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; margin-top: 1.5rem;" onclick="handleBorrowAll(event)">
-                    Confirmar Préstamo de (${booksInCart.length}) Libros
+                <button id="btn-generar-qr" class="btn btn-outline" style="width: 100%; margin-top: 1.5rem;">
+                    Generar QR para Mostrador
+                </button>
+
+                <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; margin-top: 0.5rem;" onclick="handleBorrowAll(event)">
+                    Confirmar Préstamo Digital
                 </button>
             </div>`;
+            
+        // (Se añade el listener al botón que acabamos de crear)
+        document.getElementById('btn-generar-qr').addEventListener('click', handleMostrarQR);
     }
 
-    // 6. Listeners
-    showPage('cart');
+    // 5. Listeners Generales (Los del modal)
+showPage('cart');
     document.getElementById('back-to-user-btn-from-cart').addEventListener('click', renderUserPage);
     
-    const exploreBtn = document.getElementById('explore-btn-from-cart');
-    if (exploreBtn) {
-        exploreBtn.addEventListener('click', () => showPage('user'));
+    // Verificar que los elementos existan antes de asignar listeners
+    const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+    const btnDescargarQR = document.getElementById('btn-descargar-qr');
+    
+    if (btnCerrarModal) {
+        btnCerrarModal.addEventListener('click', handleCerrarQR);
+    }
+    if (btnDescargarQR) {
+        btnDescargarQR.addEventListener('click', handleDescargarQR);
     }
 }
 
@@ -547,6 +556,80 @@ function handleAddToCart(bookId){
         renderUserPage();
     }else if (pages.bookPreview.style.display === 'block'){
         renderBookPreviewPage(bookId);
+    }
+}
+
+/**
+ * Muestra el modal (pop-up) del QR y lo genera.
+ */
+function handleMostrarQR() {
+    const modal = document.getElementById('qr-modal-overlay');
+    const qrContainer = document.getElementById('qr-code-container');
+    
+    // Defensa: Si no encuentra el modal o contenedor, salimos.
+    if (!modal || !qrContainer) {
+        alert("Error: No se encontró el contenedor del QR. Asegúrate de que el HTML esté en vistas/carrito.html");
+        return;
+    }
+    
+    qrContainer.innerHTML = ''; // Limpiar QR anterior
+
+    // 1. Preparar los datos para el QR
+    const booksInCart = allBooks.filter(book => borrowCart.includes(book.id));
+    const titulosLibros = booksInCart.map(book => `- ${book.title} (de ${book.author})`).join('\n');
+    const fecha = new Date().toLocaleDateString('es-ES');
+    
+    const textoDelQR = `
+Pedido de Biblioteca
+Usuario: ${currentUser.username}
+Fecha: ${fecha}
+--- Libros Solicitados ---
+${titulosLibros}
+    `;
+
+    // 2. Generar el nuevo QR
+    try {
+        new QRCode(qrContainer, {
+            text: textoDelQR.trim(), width: 234, height: 234,
+            colorDark: "#000000", colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } catch (e) {
+        console.error("Error al generar QR:", e);
+        alert("No se pudo generar el código QR.");
+        return;
+    }
+
+    // 3. Mostrar el modal 
+    modal.classList.add('active');
+}
+
+/**
+ * Oculta el modal (pop-up) del QR.
+ */
+function handleCerrarQR() {
+    const modal = document.getElementById('qr-modal-overlay');
+    modal.classList.remove('active');
+}
+
+/**
+ * Descarga el QR generado como un archivo PNG.
+ */
+function handleDescargarQR() {
+    try {
+        const canvas = document.querySelector('#qr-code-container canvas');
+        
+        if (!canvas) {
+            alert("No se pudo encontrar el QR para descargar.");
+            return;
+        }
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `pedido_qr_biblioteca_${currentUser.username}.png`;
+        link.click();
+    } catch (e) {
+        console.error("Error al descargar QR:", e);
+        alert("No se pudo descargar el código QR.");
     }
 }
 

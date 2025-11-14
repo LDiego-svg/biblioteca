@@ -7,14 +7,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header">
-    <div class="header-title">
-        <h1>Mi Lista de Préstamos</h1>
-        <p>Tienes {{contador}} {{pluralLibro}} listo{{pluralS}} para pedir.</p>
+    <div class="container">
+    <div class="page-header">
+        <h1>Tu Lista de Préstamos</h1>
+        <p>{{contador}} {{pluralLibro}} seleccionado{{pluralS}}</p>
     </div>
-    <button id="back-to-user-btn-from-cart" class="btn btn-outline">← Volver a la Búsqueda</button>
-</div>
 
-<div id="cart-content-container"></div>
+    <div id="cart-content-container"></div>
+
+    <button id="back-to-user-btn-from-cart" class="btn btn-outline" style="width: 100%; margin-top: 1rem;">
+        Volver al Catálogo
+    </button>
+</div>
 </body>
 </html>
