@@ -3,21 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>carrito</title>
+    <title>Carrito</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-    <div class="page-header">
-        <h1>Tu Lista de Préstamos</h1>
-        <p>{{contador}} {{pluralLibro}} seleccionado{{pluralS}}</p>
+    <div class="header">
+        <div class="header-title">
+            <h1>Mi Lista de Préstamos</h1>
+            <p>Tienes {{contador}} {{pluralLibro}} listo{{pluralS}} para pedir.</p>
+        </div>
+        <button id="back-to-user-btn-from-cart" class="btn btn-outline">← Volver a la Búsqueda</button>
     </div>
 
-    <div id="cart-content-container"></div>
+    <div id="cart-content-container"></div> 
 
-    <button id="back-to-user-btn-from-cart" class="btn btn-outline" style="width: 100%; margin-top: 1rem;">
-        Volver a la busqueda
-    </button>
-</div>
+    <div id="qr-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Tu Pedido para Mostrador</h3>
+            <p style="font-size: 0.9rem; color: #6c757d;">Muestra este QR al bibliotecario.</p>
+            
+            <div id="qr-code-container"></div> 
+            
+            <button id="btn-descargar-qr" class="btn btn-primary">Descargar QR</button>
+            <button id="btn-cerrar-modal" class="btn btn-outline">Cerrar</button>
+        </div>
+    </div>
 </body>
 </html>
