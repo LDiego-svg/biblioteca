@@ -334,7 +334,7 @@ async function renderMyBooksPage() {
 
     // 6. Listeners
     showPage('myBooks');
-    document.getElementById('back-to-user-btn').addEventListener('click', () => showPage('user'));
+    document.getElementById('back-to-user-btn').addEventListener('click', renderUserPage);
     
     const exploreBtn = document.getElementById('explore-btn');
     if (exploreBtn) {
@@ -498,7 +498,6 @@ async function apiCall(endpoint, method = 'GET', body = null) {
         method,
         headers: { 'Content-Type': 'application/json' },
     };
-    
     if (body) {
         options.body = JSON.stringify(body);
     }
