@@ -8,7 +8,6 @@ if (empty($id_prestamo)) {
     exit;
 }
 
-// Eliminamos el préstamo
 $stmt = $conn->prepare("DELETE FROM prestamos WHERE id = :id_prestamo");
 $stmt->bindParam(':id_prestamo', $id_prestamo);
 

@@ -18,7 +18,7 @@ if ($stmt_check->fetch()) {
     exit;
 }
 
-// Insertamos el nuevo préstamo (la forma simple)
+// Insertamos el nuevo préstamo 
 $fecha = date('Y-m-d');
 $stmt_insert = $conn->prepare("INSERT INTO prestamos (id_usuario, id_libro, fecha_prestamo) VALUES (:id_usuario, :id_libro, :fecha)");
 $stmt_insert->execute([':id_usuario' => $id_usuario, ':id_libro' => $id_libro, ':fecha' => $fecha]);
