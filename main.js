@@ -166,8 +166,17 @@ function renderBooksGrid(books, borrowedIds) {
             buttonHTML = `<button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="${buttonId}"></button>`;
         }
 
+        const imagenHTML = book.imagen_url 
+            ? `<img src="${book.imagen_url}" alt="${book.title}" class="book-cover-img">`
+            : `<div class="book-icon">📚</div>`;
+        
+        // El contenedor completo de la portada
+        const portadaDiv = `<div class="book-cover">${imagenHTML}</div>`;
+
+
         return `
             <div class="card book-card" onclick="renderBookPreviewPage(${book.id})">
+                ${portadaDiv} 
                 <div class="book-card-info">
                     <div class="title-row">
                         <h3>${book.title}</h3>
@@ -238,6 +247,11 @@ async function renderBookPreviewPage(bookId) {
 
     const ratingEstrellas = '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating);
 
+    const imagenHTML = book.imagen_url 
+        ? `<img src="${book.imagen_url}" alt="${book.title}" class="book-cover-img">`
+        : `<div class="book-icon" style="font-size: 8rem; height: 16rem; display:flex; align-items:center; justify-content:center; background:#f8f9fa; border-radius:8px;">📚</div>`;
+
+    plantillaHtml = plantillaHtml.replace('{{imagenHTML}}', imagenHTML);
     plantillaHtml = plantillaHtml.replace('{{botonHTML}}', botonHTML);
     plantillaHtml = plantillaHtml.replace(new RegExp('{{autor}}', 'g'), book.author);
     plantillaHtml = plantillaHtml.replace(new RegExp('{{ano}}', 'g'), book.publishedYear);
@@ -296,14 +310,22 @@ async function renderMyBooksPage() {
             </div>`;
     } else {
         // con libros
-        gridContainer.innerHTML = myBooks.map(book => `
-            <div class="card">
-                <h3>${book.title}</h3>
-                <p class="author">de ${book.author}</p>
-                <p><strong>Prestado el:</strong> ${book.fecha_prestamo}</p>
-                <button class="btn btn-outline" style="width:100%; margin-top:1rem;" onclick="handleReturn(${book.id_prestamo})">Devolver Libro</button>
-            </div>
-        `).join('');
+        gridContainer.innerHTML = myBooks.map(book => {
+            const imagenHTML = book.imagen_url 
+                ? `<img src="${book.imagen_url}" alt="${book.title}" class="book-cover-img">`
+                : `<div class="book-icon" style="font-size: 3rem; height: 10rem;">📚</div>`;
+            
+            return `
+                <div class="card">
+                    <div class="book-cover">${imagenHTML}</div> 
+                    
+                    <h3>${book.title}</h3>
+                    <p class="author">de ${book.author}</p>
+                    <p><strong>Prestado el:</strong> ${book.fecha_prestamo}</p>
+                    <button class="btn btn-outline" style="width:100%; margin-top:1rem;" onclick="handleReturn(${book.id_prestamo})">Devolver Libro</button>
+                </div>
+            `;
+        }).join('');
     }
 
     showPage('myBooks');
@@ -721,12 +743,18 @@ async function handleAgregarLibro(event) {
     const author = document.getElementById('reg-author').value;
     const category = document.getElementById('reg-category').value;
     const description = document.getElementById('reg-description').value;
+    const imagen_url = document.getElementById('reg-imagen').value;
+    const publishedYear = document.getElementById('reg-year').value;
+    const pages = document.getElementById('reg-pages').value;
 
     const data = await apiCall('agregar_libro.php', 'POST', {
         title: title,
         author: author,
         category: category,
-        description: description
+        description: description,
+        imagen_url: imagen_url,
+        publishedYear: publishedYear,
+        pages: pages
     });
     if (data && data.success){
         alert(data.message);

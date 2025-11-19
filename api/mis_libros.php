@@ -17,7 +17,8 @@ $stmt = $conn->prepare("
         p.id_libro,
         p.fecha_prestamo,
         l.title,
-        l.author
+        l.author,
+        l.imagen_url
     FROM prestamos p
     JOIN libros l ON p.id_libro = l.id
     WHERE p.id_usuario = :id_usuario

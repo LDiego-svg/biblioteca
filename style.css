@@ -246,3 +246,16 @@ body {
     padding: 10px;
     box-sizing: border-box;
 }
+
+.book-cover-img {
+    width: 100%;
+    height: 250px; 
+    object-fit: cover; 
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.book-preview-sidebar .book-cover-img {
+    height: 400px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
